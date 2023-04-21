@@ -23,7 +23,6 @@ export class AppComponent implements AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    const mfe = new MathfieldElement()
     const ce = new ComputeEngine({
       latexDictionary: [
         //@ts-ignore
@@ -42,7 +41,25 @@ export class AppComponent implements AfterViewInit {
         },
       ],
     });
-
+    
+    // Set the Compute Engine for all mathfields
+    MathfieldElement.computeEngine = ce;
+    
+    this.mfe.macros = {
+      ...this.mfe.getOptions('macros'),
+      'smallfrac': {
+        args: 2,
+        // def: '{}^{#1}\\!\\!/\\!{}_{#2}'
+        def: '#1/#2'
+      },
+    };
+    this.mfe.inlineShortcuts = {
+      ...this.mfe.getOptions('inlineShortcuts'),
+      // node: '{#1}_{\\left\\lbrack#2\\right\\rbrack}^{#3}({#4})'
+      // node:'\\mathrm{smallfrac}({#1},{#2})'
+      node: '\\smallfrac{#@}{#?}'
+    };
+    
     let ent = '';
     let ent2 = '';
 
@@ -61,25 +78,7 @@ export class AppComponent implements AfterViewInit {
 
     })
 
-    mfe.setOptions({
-      macros: {
-        ...this.mfe.getOptions('macros'),
-        'smallfrac': {
-          args: 2,
-          // def: '{}^{#1}\\!\\!/\\!{}_{#2}'
-          def: '#1/#2'
-        },
-      },
-      inlineShortcuts: {
-        ...this.mfe.getOptions('inlineShortcuts'),
-        // node: '{#1}_{\\left\\lbrack#2\\right\\rbrack}^{#3}({#4})'
-        // node:'\\mathrm{smallfrac}({#1},{#2})'
-        node: '\\smallfrac{#@}{#?}'
-      },
-      computeEngine: ce
-    })
-
-    doc?.appendChild(mfe)
+    doc?.appendChild(this.mfe)
 
 
   }
