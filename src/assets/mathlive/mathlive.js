@@ -12686,27 +12686,6 @@ M500 241 v40 H399408 v-40z M500 435 v40 H400000 v-40z`
     });
 
 
-    // defineFunction(["node"], "", {
-    //   ifMode: "math",
-    //   createAtom: (command, context, style) => new OperatorAtom(command, "", context, {
-    //     isExtensibleSymbol: true,
-    //     style,
-    //     isFunction: true,
-    //     limits: "adjacent"
-    //   })
-    // });
-
-    // defineFunction(["test"], "", {
-    //   ifMode: "math",
-    //   createAtom: (command, context, style) => new OperatorAtom(command, "\u0E05", context, {
-    //     isExtensibleSymbol: true,
-    //     limits: "adjacent",
-    //     variant: "main",
-    //     style
-    //   })
-    // });
-
-
     var EXTENSIBLE_SYMBOLS = {
       // nide:"",
       int: "\u222B",

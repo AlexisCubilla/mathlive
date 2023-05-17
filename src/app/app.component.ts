@@ -27,6 +27,23 @@ export class AppComponent implements AfterViewInit {
   ngAfterViewInit(): void {
     const ce = new ComputeEngine({
       latexDictionary: [
+
+        {
+          name: "node",
+          serialize: (serializer, expr: any) => {
+
+            for (let i = 1; i <= 4; i++) {
+
+              expr[i] = serializer.serialize(expr[i])
+              
+              if (expr[i] === "\\mathrm{Nothing}") {
+                expr[i] = "\\placeholder{}";
+              }
+            }
+            return `\\node{${expr[1]}}_{\\left\\lbrack{${expr[2]}}\\right\\rbrack}^{${expr[3]}}({${expr[4].replace(/(\w+)\((.*?)\)/g, '$1,$2').replace(/,+$/, '')}})`
+          },
+
+        },
         //@ts-ignore
         ...ComputeEngine.getLatexDictionary(),
         {
@@ -73,15 +90,36 @@ export class AppComponent implements AfterViewInit {
           trigger: ['\\node'],
           //@ts-ignore
           parse: (parser) => {
-            let a = '';
-            return [
-              'node',
-              (a = parser.matchRequiredLatexArgument()) ? (['^', '_', '='].includes(a) ? parser.matchRequiredLatexArgument() : a) : ['Error', "'missing'"],
-              (a = parser.matchRequiredLatexArgument()) ? (['^', '_', '='].includes(a) ? parser.matchRequiredLatexArgument() : a) : ['Error', "'missing'"],
-              (a = parser.matchRequiredLatexArgument()) ? (['^', '_', '='].includes(a) ? parser.matchRequiredLatexArgument() : a) : ['Error', "'missing'"],
-              (a = parser.matchRequiredLatexArgument()) ? (['^', '_', '='].includes(a) ? parser.matchRequiredLatexArgument() : a) : ['Error', "'missing'"]
-            ];
-          },
+            const arg1 = parser.matchRequiredLatexArgument() ?? ['Error', "'missing'"];
+
+            parser.skipSpace();
+
+            let sub = ['Error', "'missing'"];
+            if (parser.matchAll(['_', '<{>', '\\left', '\\lbrack'])) {
+              parser.addBoundary(['\\right', '\\rbrack', '<}>']);
+              parser.skipSpace();
+              sub = parser.matchExpression();
+              sub[0] === "Sequence" ? sub[0] = 'List' : sub[0]
+              console.log('sub------', sub)
+              parser.skipSpace();
+              if (!parser.matchBoundary()) return parser.boundaryError('expected-closing-delimiter');
+            }
+
+            let sup = ['Error', "'missing'"];
+            if (parser.match('^')) {
+              parser.skipSpace();
+              sup = parser.matchRequiredLatexArgument() ?? ['Error', "'missing'"];
+            }
+
+            parser.skipSpace();
+
+            // The "implicit" parameter indicate that we expect either 
+            // a parentheses (or other grouping), or an implicit argument
+            // i.e. a simple operation, like for trig functions
+            const arg2 = parser.matchArguments('implicit')[0];
+
+            return ['node', arg1, sub, sup, arg2]
+          }
         },
         {
           trigger: ['\\test'],
@@ -116,40 +154,19 @@ export class AppComponent implements AfterViewInit {
         def: '{}^{#1}\\!\\!/\\!{}_{#2}',
         // def: '{#@}/{#?}',
         captureSelection: false,
-      },
-      // 'node': {
-      //   args: 4,
-      //   def: "\\node{#@}_\\left\\lbrack{#?}\\right\\rbrack^{#?}{#?}",
-      //   captureSelection: false,
-      // }
-
-
-      // 'node': {
-      //   args: 4,
-      //   def: '{#1}_{\\left\\lbrack#2\\right\\rbrack}^{#3}({#4})',
-      //   captureSelection: false,
-
-      // },
-      // 'set': {
-      //   args: 5,
-      //   def: '{#1}_{\\left\\lbrack#3\\right\\rbrack}^{#2}({#4})={#5}',
-      //   captureSelection: false
-      // },
-      // 'get': {
-      //   args: 4,
-      //   def: '{#1}_{\\left\\lbrack#3\\right\\rbrack}^{#2}({#4})',
-      //   captureSelection: false
-      // }
+      }
     };
     this.mfe.inlineShortcuts = {
       ...this.mfe.getOptions('inlineShortcuts'),
-      smallfrac: '\\smallfrac{#@}{#?}',
-      set: "\\set{#@}_\\left\\lbrack{#?}\\right\\rbrack^{#?}{#?}={#?}",
-      get: "\\get{#@}_\\left\\lbrack{#?}\\right\\rbrack^{#?}{#?}",
-      node: "\\node{#@}_\\left\\lbrack{#?}\\right\\rbrack^{#?}{#?}",
+      // smallfrac: '\\smallfrac{#@}{#?}',
+      // set: "\\set{#@}_\\left\\lbrack{#?}\\right\\rbrack^{#?}{#?}={#?}",
+      // get: "\\get{#@}_\\left\\lbrack{#?}\\right\\rbrack^{#?}{#?}",
+      node: "\\node{#@}_\\left\\lbrack{#?}\\right\\rbrack^{#?}({#?})",
       test: "\\test_{#1}^{#2}",
 
     };
+
+    ce.jsonSerializationOptions
 
     let ent = '';
     let ent2 = '';
@@ -160,33 +177,27 @@ export class AppComponent implements AfterViewInit {
 
     let mathjson = document.querySelector('#math-json');
 
+    let latexjson = document.querySelector('#latex-json');
+
 
     this.mfe.addEventListener('input', (e: any) => {
 
-      ent = e.target.getValue('latex-expanded')
       latex!.textContent = this.mfe.getValue('latex-expanded');
 
       mathjson!.textContent = this.mfe.getValue('math-json');
 
-      ent2 = e.target.getValue('math-json')
+      //@ts-ignore
+      // latexjson!.textContent = ce.serialize(JSON.parse(mathjson!.textContent));
+
+      latexjson!.textContent = MathfieldElement.computeEngine.serialize(JSON.parse(mathjson!.textContent))
 
       console.log('latex: ', latex!.textContent);
 
       console.log('mathjson: ', mathjson!.textContent);
 
+      console.log('mfe: ', this.mfe);
+
     })
-
-    // this.mfe.defineFunction(["nide"], "", {
-    //   ifMode: "math",
-
-    //   createAtom: (command: any, context: any, style: any) => new  this.mfe.OperatorAtom(command, "", context, {
-    //     isExtensibleSymbol: true,
-    //     style,
-    //     isFunction: true,
-    //     limits: "adjacent"
-    //   })
-    // });
-
 
     doc?.appendChild(this.mfe)
 
